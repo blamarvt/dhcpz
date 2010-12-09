@@ -19,246 +19,246 @@ hdralias_to_def = {}
 # Primary public methods
 
 def get_definition(optcode):
-	optcode = _normalize_option_alias(optcode)
-	hdrdef = hdralias_to_def.get(optcode)
-	if hdrdef is not None:
-		return True, hdrdef
+    optcode = _normalize_option_alias(optcode)
+    hdrdef = hdralias_to_def.get(optcode)
+    if hdrdef is not None:
+        return True, hdrdef
 
-	optdef = optalias_to_def.get(optcode)
-	if optdef is not None:
-		return False, optdef
+    optdef = optalias_to_def.get(optcode)
+    if optdef is not None:
+        return False, optdef
 
-	raise KeyError(optcode)
+    raise KeyError(optcode)
 
 def value_to_log(optcode, value):
-	return get_definition(optcode).typedef.to_log(value)
+    return get_definition(optcode).typedef.to_log(value)
 
 def octets_to_log(optcode, value):
-	try:
-		optdef = get_definition(optcode)
-		return "%s = %s" % (optdef, optdef.typedef.to_log(optdef.typedef.from_octets(value)))
-	except KeyError:
-		return "unknown(%d) = %r" % (optcode, value)
+    try:
+        optdef = get_definition(optcode)
+        return "%s = %s" % (optdef, optdef.typedef.to_log(optdef.typedef.from_octets(value)))
+    except KeyError:
+        return "unknown(%d) = %r" % (optcode, value)
 
 
 # Helpers for to/from octets methods
 
 class PassThruType(object):
-	def from_octets(self, value):
-		return value
+    def from_octets(self, value):
+        return value
 
-	def to_octets(self, value):
-		return value
+    def to_octets(self, value):
+        return value
 
-	def __str__(self):
-		return "pass-thru"
+    def __str__(self):
+        return "pass-thru"
 
 class IntType(object):
-	dpkt_header_skip = True
+    dpkt_header_skip = True
 
-	def __init__(self, fmt):
-		self._struct = struct.Struct("!" + fmt)
+    def __init__(self, fmt):
+        self._struct = struct.Struct("!" + fmt)
 
-	def from_octets(self, value):
-		return self._struct.unpack(value)[0]
+    def from_octets(self, value):
+        return self._struct.unpack(value)[0]
 
-	def to_octets(self, value):
-		return self._struct.pack((value,))
+    def to_octets(self, value):
+        return self._struct.pack((value,))
 
-	def to_log(self, value):
-		return "%d" % value
+    def to_log(self, value):
+        return "%d" % value
 
-	def __len__(self):
-		return self._struct.size
+    def __len__(self):
+        return self._struct.size
 
-	def __str__(self):
-		return "uint%d" % (len(self) * 8)
+    def __str__(self):
+        return "uint%d" % (len(self) * 8)
 
 class Ipv4Type(object):
-	dpkt_header_skip = True
+    dpkt_header_skip = True
 
-	def from_octets(self, value):
-		return socket.inet_ntoa(value)
+    def from_octets(self, value):
+        return socket.inet_ntoa(value)
 
-	def to_octets(self, value):
-		return socket.inet_aton(value)
-	
-	def to_log(self, value):
-		return str(value)
+    def to_octets(self, value):
+        return socket.inet_aton(value)
+    
+    def to_log(self, value):
+        return str(value)
 
-	def __len__(self):
-		return 4
-	
-	def __str__(self):
-		return "ipv4-address"
+    def __len__(self):
+        return 4
+    
+    def __str__(self):
+        return "ipv4-address"
 
 class ListType(object):
-	def __init__(self, itemtype):
-		self._itemtype = itemtype
-		self._itemlen = len(self._itemtype)
+    def __init__(self, itemtype):
+        self._itemtype = itemtype
+        self._itemlen = len(self._itemtype)
 
-	def from_octets(self, value):
-		while value:
-			item, value = value[:self._itemlen], value[self._itemlen:]
-			yield self._itemtype.from_octets(item)
+    def from_octets(self, value):
+        while value:
+            item, value = value[:self._itemlen], value[self._itemlen:]
+            yield self._itemtype.from_octets(item)
 
-	def to_octets(self, value):
-		retval = []
-		for item in value:
-			retval.append(self._itemtype.to_octets(item))
-		return ''.join(retval)
-	
-	def to_log(self, value):
-		return ",".join(map(self._itemtype.to_log, value))
+    def to_octets(self, value):
+        retval = []
+        for item in value:
+            retval.append(self._itemtype.to_octets(item))
+        return ''.join(retval)
+    
+    def to_log(self, value):
+        return ",".join(map(self._itemtype.to_log, value))
 
-	def __str__(self):
-		return "list<%s>" % self._itemtype
+    def __str__(self):
+        return "list<%s>" % self._itemtype
 
 class StringType(object):
-	def from_octets(self, value):
-		return value
+    def from_octets(self, value):
+        return value
 
-	def to_octets(self, value):
-		return value
-	
-	def to_log(self, value):
-		return repr(value)
+    def to_octets(self, value):
+        return value
+    
+    def to_log(self, value):
+        return repr(value)
 
-	def __str__(self):
-		return "string"
+    def __str__(self):
+        return "string"
 
 class BytesType(object):
-	def from_octets(self, value):
-		return value
+    def from_octets(self, value):
+        return value
 
-	def to_octets(self, value):
-		return value
+    def to_octets(self, value):
+        return value
 
-	def to_log(self, value):
-		return "0x" + ''.join(["%02X" % ord(octet) for octet in value])
+    def to_log(self, value):
+        return "0x" + ''.join(["%02X" % ord(octet) for octet in value])
 
-	def __str__(self):
-		return "octets"
+    def __str__(self):
+        return "octets"
 
 class EnumType(IntType):
-	def __init__(self, value_to_name, fmt="B"):
-		IntType.__init__(self, fmt)
-		self.value_to_name = value_to_name
+    def __init__(self, value_to_name, fmt="B"):
+        IntType.__init__(self, fmt)
+        self.value_to_name = value_to_name
 
-	def from_octets(self, value):
-		value = IntType.from_octets(self, value)
-		return self.value_to_name.get(value, value)
+    def from_octets(self, value):
+        value = IntType.from_octets(self, value)
+        return self.value_to_name.get(value, value)
 
-	def to_octets(self, value):
-		retcode = None
-		for code, name in self.value_to_name.iteritems():
-			if value in (code, name):
-				retcode = code
-				break
+    def to_octets(self, value):
+        retcode = None
+        for code, name in self.value_to_name.iteritems():
+            if value in (code, name):
+                retcode = code
+                break
 
-		if retcode is None:
-			raise KeyError(value)
+        if retcode is None:
+            raise KeyError(value)
 
-		return IntType.to_octets(self, retcode)
+        return IntType.to_octets(self, retcode)
 
-	def to_log(self, value):
-		if not isinstance(value, basestring):
-			value = self.value_to_name.get(value, value)
-		return repr(value)
+    def to_log(self, value):
+        if not isinstance(value, basestring):
+            value = self.value_to_name.get(value, value)
+        return repr(value)
 
-	def __str__(self):
-		return "enum {%s}" % ", ".join(["%d=%s" % v for v in self.value_to_name.iteritems()])
+    def __str__(self):
+        return "enum {%s}" % ", ".join(["%d=%s" % v for v in self.value_to_name.iteritems()])
 
 class StructType(object):
-	def __init__(self, *typedefs):
-		self.typedefs = typedefs
-		assert self.typedefs
+    def __init__(self, *typedefs):
+        self.typedefs = typedefs
+        assert self.typedefs
 
-	def from_octets(self, value):
-		for typedef in self.typedefs[:-1]:
-			# each item requires size
-			length = len(typedef)
-			item, value = value[:length], value[length:]
-			yield typedef.from_octets(item)
-		
-		# last item doesn't need size
-		yield self.typedefs[-1].from_octets(value)
+    def from_octets(self, value):
+        for typedef in self.typedefs[:-1]:
+            # each item requires size
+            length = len(typedef)
+            item, value = value[:length], value[length:]
+            yield typedef.from_octets(item)
+        
+        # last item doesn't need size
+        yield self.typedefs[-1].from_octets(value)
 
-	def to_octets(self, value):
-		retval = []
-		for typedef, item in zip(self.typedefs, value):
-			retval.append(typedef.to_octets(item))
-		return ''.join(retval)
+    def to_octets(self, value):
+        retval = []
+        for typedef, item in zip(self.typedefs, value):
+            retval.append(typedef.to_octets(item))
+        return ''.join(retval)
 
-	def to_log(self, value):
-		retval = []
-		for typedef, item in zip(self.typedefs, value):
-			retval.append(typedef.to_log(item))
-		return "(%s)" % ", ".join(retval)
+    def to_log(self, value):
+        retval = []
+        for typedef, item in zip(self.typedefs, value):
+            retval.append(typedef.to_log(item))
+        return "(%s)" % ", ".join(retval)
 
-	def __str__(self):
-		return "struct <%s>" % ", ".join(map(str, self.typedefs))
+    def __str__(self):
+        return "struct <%s>" % ", ".join(map(str, self.typedefs))
 
 class MacType(object):
-	def from_octets(self, value, sep=":"):
-		return sep.join(["%02X" % ord(c) for c in value])
+    def from_octets(self, value, sep=":"):
+        return sep.join(["%02X" % ord(c) for c in value])
 
-	def to_octets(self, value):
-		retval = []
-		value.replace(":", "")
-		while value:
-			octet, value = value[:2], value[2:]
-			retval.append(chr(int(octet, 16)))
-		return ''.join(retval)
+    def to_octets(self, value):
+        retval = []
+        value.replace(":", "")
+        while value:
+            octet, value = value[:2], value[2:]
+            retval.append(chr(int(octet, 16)))
+        return ''.join(retval)
 
-	def to_log(self, value):
-		return str(value)
+    def to_log(self, value):
+        return str(value)
 
-	def __str__(self):
-		return "mac-address"
+    def __str__(self):
+        return "mac-address"
 
-	def __len__(self):
-		return 6
+    def __len__(self):
+        return 6
 
 class VariableNullPadding(object):
-	def __init__(self, typedef, padlen):
-		self.typedef = typedef
-		self.padlen = padlen
+    def __init__(self, typedef, padlen):
+        self.typedef = typedef
+        self.padlen = padlen
 
-	def from_octets(self, value):
-		value = value.rstrip("\0")
-		return self.typedef.from_octets(value)
+    def from_octets(self, value):
+        value = value.rstrip("\0")
+        return self.typedef.from_octets(value)
 
-	def to_octets(self, value):
-		value = self.typedef.to_octets(value)
-		value = value[:self.padlen]
-		value += "\0" * (self.padlen - len(value))
-		return value
+    def to_octets(self, value):
+        value = self.typedef.to_octets(value)
+        value = value[:self.padlen]
+        value += "\0" * (self.padlen - len(value))
+        return value
 
-	def to_log(self, value):
-		return self.typedef.to_log(value)
+    def to_log(self, value):
+        return self.typedef.to_log(value)
 
-	def __str__(self):
-		return str(self.typedef) + ("[%d]" % self.padlen)
+    def __str__(self):
+        return str(self.typedef) + ("[%d]" % self.padlen)
 
 
 class NullPadding(object):
-	def __init__(self, typedef, padlen):
-		self.typedef = typedef
-		self.padlen = padlen
-		self.pad = "\0" * self.padlen
+    def __init__(self, typedef, padlen):
+        self.typedef = typedef
+        self.padlen = padlen
+        self.pad = "\0" * self.padlen
 
-	def from_octets(self, value):
-		return self.typedef.from_octets(value[:self.padlen])
+    def from_octets(self, value):
+        return self.typedef.from_octets(value[:self.padlen])
 
-	def to_octets(self, value):
-		return self.typedef.to_octets(value) + self.pad
+    def to_octets(self, value):
+        return self.typedef.to_octets(value) + self.pad
 
-	def to_log(self, value):
-		return self.typedef.to_log(value)
+    def to_log(self, value):
+        return self.typedef.to_log(value)
 
-	def __str__(self):
-		return str(self.typedef) + ("[%d]" % self.padlen)
+    def __str__(self):
+        return str(self.typedef) + ("[%d]" % self.padlen)
 
 
 uint8 = IntType("B")
@@ -272,44 +272,44 @@ mac = MacType()
 # Misc helpers
 
 def _normalize_option_alias(optalias):
-	if isinstance(optalias, basestring):
-		optalias = optalias.lower().strip().replace("-", "")
-	return optalias
+    if isinstance(optalias, basestring):
+        optalias = optalias.lower().strip().replace("-", "")
+    return optalias
 
 # Helpers for defining options
 
 class OptionDefinition(object):
-	def __init__(self, optcode, typedef, aliases):
-		self.optcode = optcode
-		self.typedef = typedef
-		self.aliases = aliases
-		assert self.aliases
+    def __init__(self, optcode, typedef, aliases):
+        self.optcode = optcode
+        self.typedef = typedef
+        self.aliases = aliases
+        assert self.aliases
 
-	def __cmp__(self, other):
-		return cmp(self.optcode, other.optcode)
+    def __cmp__(self, other):
+        return cmp(self.optcode, other.optcode)
 
-	def __str__(self):
-		return self.aliases[0]
+    def __str__(self):
+        return self.aliases[0]
 
-	def debug_aligned(self):
-		aliases = "".join([", alias %s" % alias for alias in self.aliases[1:]])
-		yield "%24s (code %s, type %s%s)" % (self.aliases[0], self.optcode, self.typedef, aliases)
+    def debug_aligned(self):
+        aliases = "".join([", alias %s" % alias for alias in self.aliases[1:]])
+        yield "%24s (code %s, type %s%s)" % (self.aliases[0], self.optcode, self.typedef, aliases)
 
 def define_option(optcode, typedef, *aliases):
-	optdef = OptionDefinition(optcode, typedef, aliases)
-	option_list.append(optdef)
-	optalias_to_def[optcode] = optdef
-	for alias in aliases:
-		alias = _normalize_option_alias(alias)
-		optalias_to_def[alias] = optdef
+    optdef = OptionDefinition(optcode, typedef, aliases)
+    option_list.append(optdef)
+    optalias_to_def[optcode] = optdef
+    for alias in aliases:
+        alias = _normalize_option_alias(alias)
+        optalias_to_def[alias] = optdef
 
 def define_header(hdrname, typedef, *aliases):
-	aliases = (hdrname,) + aliases
-	hdrdef = OptionDefinition(hdrname, typedef, aliases)
-	header_list.append(hdrdef)
-	for alias in aliases:
-		alias = _normalize_option_alias(alias)
-		hdralias_to_def[alias] = hdrdef
+    aliases = (hdrname,) + aliases
+    hdrdef = OptionDefinition(hdrname, typedef, aliases)
+    header_list.append(hdrdef)
+    for alias in aliases:
+        alias = _normalize_option_alias(alias)
+        hdralias_to_def[alias] = hdrdef
 
 # Common DHCP options from RFC 2132
 
@@ -337,17 +337,17 @@ define_option(DHCP_OPT_CLIENT_ID, octets, "clientid", "client")
 # Intel PXE Options from RFC 4578
 
 client_arch_map = {
-		0 : "intel-x86-pc",
-		1 : "nec/pc98",
-		2 : "efi-itanium",
-		3 : "dec-alpha",
-		4 : "arc-x86",
-		5 : "intel-lean-client",
-		6 : "efi-ia32",
-		7 : "efi-bc",
-		8 : "efi-xscale",
-		9 : "efi-x86-64",
-		}
+        0 : "intel-x86-pc",
+        1 : "nec/pc98",
+        2 : "efi-itanium",
+        3 : "dec-alpha",
+        4 : "arc-x86",
+        5 : "intel-lean-client",
+        6 : "efi-ia32",
+        7 : "efi-bc",
+        8 : "efi-xscale",
+        9 : "efi-x86-64",
+        }
 
 define_option(93, EnumType(client_arch_map, "H"), "client-architecture", "client-arch", "arch")
 define_option(94, StructType(EnumType({1:"undi"}), uint8, uint8), "network-interface-id", "nic-id")
@@ -393,14 +393,14 @@ define_header("magic", uint32)
 # Exposed client database via script execution
 
 def main():
-	print "Required headers:"
-	for hdrdef in header_list:
-		print '\n'.join(hdrdef.debug_aligned())
+    print "Required headers:"
+    for hdrdef in header_list:
+        print '\n'.join(hdrdef.debug_aligned())
 
-	print "Supported options:"
-	option_list.sort()
-	for optdef in option_list:
-		print '\n'.join(optdef.debug_aligned())
+    print "Supported options:"
+    option_list.sort()
+    for optdef in option_list:
+        print '\n'.join(optdef.debug_aligned())
 
 if __name__ == "__main__":
-	main()
+    main()
