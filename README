@@ -1,0 +1,8 @@
+DHCPZ
+=====
+
+DHCP server with a ReSTful HTTP backend for network configuration
+
+Requirements
+------------
+

@@ -1,0 +1,4 @@
+
+		[console_scripts]
+                dhcpz=dhcpz:main
+		

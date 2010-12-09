@@ -1,0 +1,90 @@
+#!/bin/bash
+# dhcpz
+# 
+# chkconfig: 2345 50 50
+# description: 
+#     DHCP server with a ReSTful HTTP backend for network configuration
+
+NAME="dhcpz"
+APP_PATH="/usr/bin/${NAME}"
+SUBSYS="/var/lock/subsys/${NAME}"
+
+# import rhel methods
+. /etc/rc.d/init.d/functions
+
+# pull in sysconfig file for setting up the path
+[ -f "/etc/sysconfig/${NAME}" ] && . "/etc/sysconfig/${NAME}"
+
+status() {
+	${APP_PATH} status
+	RETVAL=$?
+}
+
+condrestart() {
+	if [ -f "${SUBSYS}" ] ; then
+		stop
+		start
+	fi
+}
+
+restart() {
+	stop
+	start
+}
+
+stop() {
+	echo -n $"Stopping ${NAME}: "
+	${APP_PATH} stop && success || failure
+	RETVAL=$?
+	[ "$RETVAL" = 0 ] && rm -f "${SUBSYS}"
+	echo
+}
+
+update() {
+	echo -n $"Updating $NAME: "
+	$APP_PATH update && success || failure
+	echo
+	RETVAL=$?
+}
+
+start() {
+	echo -n $"Starting ${NAME}: "
+	${APP_PATH} start && success || failure
+	RETVAL=$?
+	[ "$RETVAL" = 0 ] && touch "${SUBSYS}"
+	echo
+}
+
+foreground() {
+	${APP_PATH} foreground
+	RETVAL=$?
+}
+
+case "$1" in
+	status)
+		status
+		;;
+	condrestart)
+		condrestart
+		;;
+	restart)
+		restart
+		;;
+	stop)
+		stop
+		;;
+	update)
+		update
+		;;
+	start)
+		start
+		;;
+	foreground)
+		foreground
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|restart|condrestart|status|update|foreground}"
+		RETVAL=1
+esac
+exit $RETVAL
+
