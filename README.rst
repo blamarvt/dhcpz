@@ -1,9 +1,11 @@
 DHCPZ
 =====
 
-DHCP server with an HTTP API for easy configuration.
+DHCP server which requests network configuration via HTTP. Most basically a DHCP -> HTTP proxy.
 
 Requirements
 ------------
 
-Stuff
+dpkt
+gevent
+netifaces

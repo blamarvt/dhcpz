@@ -1,0 +1,32 @@
+#!/usr/bin/python
+"""
+dhcpz - Command line entry point for a dhcpz server
+"""
+
+from daemonhelper import GeventDaemon, make_main
+
+from dhcpz import DhcpServer
+from dhcpz.handlers import DhcpHandler
+from dhcpz.util import network_config
+
+class DhcpzDaemon(GeventDaemon):
+    name        = "dhcpz"
+    description = "Very configurable DHCP server"
+
+    def handle_prerun(self):
+        self._handler = DhcpHandler(logger=self.logger)
+        self._server = DhcpServer(self._handler, logger=self.logger)
+
+        for ip in network_config().keys():
+            self._server.listen(ip)
+
+    def handle_run(self):
+        self._server.run()
+
+    def handle_stop(self):
+        self._server.stop()
+
+main = make_main(DhcpzDaemon)
+
+if __name__ == "__main__":
+    main()

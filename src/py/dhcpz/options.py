@@ -36,7 +36,7 @@ def value_to_log(optcode, value):
 def octets_to_log(optcode, value):
     try:
         optdef = get_definition(optcode)
-        return "%s = %s" % (optdef, optdef.typedef.to_log(optdef.typedef.from_octets(value)))
+        return "%s = %s" % (optdef, optdef.typedef.to_log(optdef.typedef.from_octets(value, isheader=isheader)))
     except KeyError:
         return "unknown(%d) = %r" % (optcode, value)
 
@@ -44,10 +44,10 @@ def octets_to_log(optcode, value):
 # Helpers for to/from octets methods
 
 class PassThruType(object):
-    def from_octets(self, value):
+    def from_octets(self, value, isheader=False):
         return value
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         return value
 
     def __str__(self):
@@ -59,11 +59,17 @@ class IntType(object):
     def __init__(self, fmt):
         self._struct = struct.Struct("!" + fmt)
 
-    def from_octets(self, value):
-        return self._struct.unpack(value)[0]
+    def from_octets(self, value, isheader=False):
+        if isheader:
+            return value
+        else:
+            return self._struct.unpack(value)[0]
 
-    def to_octets(self, value):
-        return self._struct.pack((value,))
+    def to_octets(self, value, isheader=False):
+        if isheader:
+            return value
+        else:
+            return self._struct.pack(value)
 
     def to_log(self, value):
         return "%d" % value
@@ -77,11 +83,19 @@ class IntType(object):
 class Ipv4Type(object):
     dpkt_header_skip = True
 
-    def from_octets(self, value):
-        return socket.inet_ntoa(value)
+    def from_octets(self, value, isheader=False):
+        if isheader:
+            v = "%08x" % value
+            return "%i.%i.%i.%i" % (int(v[0:2],16),int(v[2:4],16),int(v[4:6],16),int(v[6:8],16))
+        else:
+            return socket.inet_ntoa(value)
 
-    def to_octets(self, value):
-        return socket.inet_aton(value)
+    def to_octets(self, value, isheader=False):
+        if isheader:
+            v = value.split(".")
+            return int("%02x%02x%02x%02x" % (int(v[0]),int(v[1]),int(v[2]),int(v[3])),16)        
+        else:
+            return socket.inet_aton(value)
     
     def to_log(self, value):
         return str(value)
@@ -97,15 +111,15 @@ class ListType(object):
         self._itemtype = itemtype
         self._itemlen = len(self._itemtype)
 
-    def from_octets(self, value):
+    def from_octets(self, value, isheader=False):
         while value:
             item, value = value[:self._itemlen], value[self._itemlen:]
-            yield self._itemtype.from_octets(item)
+            yield self._itemtype.from_octets(item, isheader=isheader)
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         retval = []
         for item in value:
-            retval.append(self._itemtype.to_octets(item))
+            retval.append(self._itemtype.to_octets(item, isheader=isheader))
         return ''.join(retval)
     
     def to_log(self, value):
@@ -115,10 +129,10 @@ class ListType(object):
         return "list<%s>" % self._itemtype
 
 class StringType(object):
-    def from_octets(self, value):
+    def from_octets(self, value, isheader=False):
         return value
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         return value
     
     def to_log(self, value):
@@ -128,10 +142,10 @@ class StringType(object):
         return "string"
 
 class BytesType(object):
-    def from_octets(self, value):
+    def from_octets(self, value, isheader=False):
         return value
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         return value
 
     def to_log(self, value):
@@ -145,11 +159,11 @@ class EnumType(IntType):
         IntType.__init__(self, fmt)
         self.value_to_name = value_to_name
 
-    def from_octets(self, value):
-        value = IntType.from_octets(self, value)
+    def from_octets(self, value, isheader=False):
+        value = IntType.from_octets(self, value, isheader=isheader)
         return self.value_to_name.get(value, value)
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         retcode = None
         for code, name in self.value_to_name.iteritems():
             if value in (code, name):
@@ -159,7 +173,7 @@ class EnumType(IntType):
         if retcode is None:
             raise KeyError(value)
 
-        return IntType.to_octets(self, retcode)
+        return IntType.to_octets(self, retcode, isheader=isheader)
 
     def to_log(self, value):
         if not isinstance(value, basestring):
@@ -174,20 +188,20 @@ class StructType(object):
         self.typedefs = typedefs
         assert self.typedefs
 
-    def from_octets(self, value):
+    def from_octets(self, value, isheader=False):
         for typedef in self.typedefs[:-1]:
             # each item requires size
             length = len(typedef)
             item, value = value[:length], value[length:]
-            yield typedef.from_octets(item)
+            yield typedef.from_octets(item, isheader=isheader)
         
         # last item doesn't need size
-        yield self.typedefs[-1].from_octets(value)
+        yield self.typedefs[-1].from_octets(value, isheader=isheader)
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         retval = []
         for typedef, item in zip(self.typedefs, value):
-            retval.append(typedef.to_octets(item))
+            retval.append(typedef.to_octets(item, isheader=isheader))
         return ''.join(retval)
 
     def to_log(self, value):
@@ -200,12 +214,13 @@ class StructType(object):
         return "struct <%s>" % ", ".join(map(str, self.typedefs))
 
 class MacType(object):
-    def from_octets(self, value, sep=":"):
+    def from_octets(self, value, sep=":", isheader=False):
+        value = value[0:6] #TODO: Better solution? Logging? More? -B
         return sep.join(["%02X" % ord(c) for c in value])
 
-    def to_octets(self, value):
+    def to_octets(self, value, isheader=False):
         retval = []
-        value.replace(":", "")
+        value = value.replace(":", "")
         while value:
             octet, value = value[:2], value[2:]
             retval.append(chr(int(octet, 16)))
@@ -225,12 +240,12 @@ class VariableNullPadding(object):
         self.typedef = typedef
         self.padlen = padlen
 
-    def from_octets(self, value):
+    def from_octets(self, value, isheader=False):
         value = value.rstrip("\0")
-        return self.typedef.from_octets(value)
+        return self.typedef.from_octets(value, isheader=isheader)
 
-    def to_octets(self, value):
-        value = self.typedef.to_octets(value)
+    def to_octets(self, value, isheader=False):
+        value = self.typedef.to_octets(value, isheader=isheader)
         value = value[:self.padlen]
         value += "\0" * (self.padlen - len(value))
         return value
@@ -248,11 +263,11 @@ class NullPadding(object):
         self.padlen = padlen
         self.pad = "\0" * self.padlen
 
-    def from_octets(self, value):
-        return self.typedef.from_octets(value[:self.padlen])
+    def from_octets(self, value, isheader=False):
+        return self.typedef.from_octets(value[:self.padlen], isheader=isheader)
 
-    def to_octets(self, value):
-        return self.typedef.to_octets(value) + self.pad
+    def to_octets(self, value, isheader=False):
+        return self.typedef.to_octets(value, isheader=isheader) + self.pad
 
     def to_log(self, value):
         return self.typedef.to_log(value)
