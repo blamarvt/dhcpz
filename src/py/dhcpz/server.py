@@ -53,6 +53,7 @@ class DhcpServerListener(gevent.Greenlet):
 
     def stop(self):
         self._keepgoing = False
+        self.kill()
 
     def __repr__(self):
         return "<%s on %s (%s)>" % (self.__class__.__name__, self.ip_address, self.iface_name)

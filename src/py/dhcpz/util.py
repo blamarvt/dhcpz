@@ -3,6 +3,7 @@
 dhcpz.util
 """
 
+import string
 import netifaces
 
 def _ip_config_init():
@@ -31,6 +32,9 @@ def network_config(include_local=False):
         return dict((key,value) for key, value in config.iteritems() if not key.startswith("127."))
     else:
         return config
+
+def to_list(_input):
+    return map(string.strip, _input.split(","))
 
 
 

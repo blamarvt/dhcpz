@@ -22,11 +22,11 @@ class DhcpHandler(object):
         @param packet: The incoming packet
         """ 
         try:
-            return self._dispatch[packet["msgtype"]](self, packet)
+            return self._dispatch[packet["msgtype"]](self, listener, packet)
         except KeyError:
-            self.logger.debug("Unknown message type encountered: %d" % packet.msgtype)
+            self.logger.debug("Unknown message type encountered: %d" % packet['msgtype'])
 
-    def handle_discover(self, packet):
+    def handle_discover(self, listener, packet):
         """
         DHCPDISCOVER can result in DHCPOFFER
         
@@ -48,14 +48,15 @@ class DhcpHandler(object):
         @param packet: The incoming packet from a client
         """
         response = packet.make_response(dhcp.DHCPOFFER, {
+            'filename'    : 'test',
             'ip'          : '169.254.10.10',
-            'next-server' : '169.254.0.1',
             'leasetime'   : 3600,
-            'serverid'    : '169.254.0.1',
+            'serverid'    : listener.ip_address,
+            'next-server' : listener.ip_address
         })
         return response
 
-    def handle_request(self, packet):
+    def handle_request(self, listener, packet):
         """
         DHCPREQUEST can result in DHCPACK, or DHCPNAK.
         
@@ -77,17 +78,18 @@ class DhcpHandler(object):
         @param packet: The incoming packet from a client
         """
         response = packet.make_response(dhcp.DHCPACK, {
+            'filename'    : 'test',
             'ip'          : '169.254.10.10',
-            'next-server' : '169.254.0.1',
             'leasetime'   : 3600,
             'serverid'    : '169.254.0.1',
+            'next-server' : '169.254.0.1'
         })
         return response
 
-    def handle_decline(self, packet):
+    def handle_decline(self, listener, packet):
         pass
 
-    def handle_release(self, packet):
+    def handle_release(self, listener, packet):
         pass
     
     _dispatch = {

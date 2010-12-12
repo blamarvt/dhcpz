@@ -18,7 +18,8 @@ setup(
     package_dir      = {"":"src/py"},
     install_requires = ['gevent', 'netifaces'],
     data_files       = [
+        ('/etc', ['conf/dhcpz.conf']),
         ('/etc/init.d', ['src/init.d/dhcpz']),
-        ('/usr/bin', ['src/bin/dhcpz'])
+        ('/usr/bin', ['src/bin/dhcpz']),
     ],
 )

@@ -7,7 +7,7 @@ from daemonhelper import GeventDaemon, make_main
 
 from dhcpz import DhcpServer
 from dhcpz.handlers import DhcpHandler
-from dhcpz.util import network_config
+from dhcpz.util import network_config, to_list
 
 class DhcpzDaemon(GeventDaemon):
     name        = "dhcpz"
@@ -17,8 +17,13 @@ class DhcpzDaemon(GeventDaemon):
         self._handler = DhcpHandler(logger=self.logger)
         self._server = DhcpServer(self._handler, logger=self.logger)
 
-        for ip in network_config().keys():
-            self._server.listen(ip)
+        net_config = network_config()
+        all_interfaces = [config[0] for ip, config in net_config.items()]
+        interfaces = self.config("dhcpz", "listen", all_interfaces, transform=to_list)
+
+        for ip, config in network_config().items():
+            if config[0] in interfaces:
+                self._server.listen(ip)
 
     def handle_run(self):
         self._server.run()
