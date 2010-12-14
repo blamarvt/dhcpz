@@ -86,5 +86,5 @@ class DhcpServer(object):
             listener.stop()
 
     def _launch_listener(self, listener):
-        self.logger.warn("listening on %s" % listener.ip_address)
+        self.logger.info("listening on %s" % listener.ip_address)
         listener.start()

@@ -28,68 +28,30 @@ class DhcpHandler(object):
 
     def handle_discover(self, listener, packet):
         """
-        DHCPDISCOVER can result in DHCPOFFER
-        
-        If you're going to return DHCPOFFER to the client, you MUST have:
-            -IP address lease time
-            -Server identifier
-        
-        If you're going to return DHCPOFFER to the client, you MAY have:
-            -File or sname fields
-            -Vendor class information
-            -Any other field
-
-        If you're going to return DHCPOFFER to the client, you MUST NOT have:
-            -The requested IP address
-            -Parameter request list
-            -Client identifier
-            -Maximum message size
-
+        @param listener: The listener that got the packet
         @param packet: The incoming packet from a client
         """
-        response = packet.make_response(dhcp.DHCPOFFER, {
-            'filename'    : 'test',
-            'ip'          : '169.254.10.10',
-            'leasetime'   : 3600,
-            'serverid'    : listener.ip_address,
-            'next-server' : listener.ip_address
-        })
-        return response
+        pass
 
     def handle_request(self, listener, packet):
         """
-        DHCPREQUEST can result in DHCPACK, or DHCPNAK.
-        
-        If you're going to return DHCPACK, to the client, you MUST have:
-            -Server identifier
-            -Ip address lease time
-        
-        If you're going to return DHCPACK, to the client, you MAY have:
-            -File or sname fields
-            -Vendor class information
-            -Any other field
-
-        If you're going to return DHCPACK, to the client, you MUST NOT have:
-            -The requested IP address
-            -Parameter request list
-            -Client identifier
-            -Maximum message size
-
+        @param listener: The listener that got the packet
         @param packet: The incoming packet from a client
         """
-        response = packet.make_response(dhcp.DHCPACK, {
-            'filename'    : 'test',
-            'ip'          : '169.254.10.10',
-            'leasetime'   : 3600,
-            'serverid'    : '169.254.0.1',
-            'next-server' : '169.254.0.1'
-        })
-        return response
+        pass
 
     def handle_decline(self, listener, packet):
+        """
+        @param listener: The listener that got the packet
+        @param packet: The incoming packet from a client
+        """
         pass
 
     def handle_release(self, listener, packet):
+        """
+        @param listener: The listener that got the packet
+        @param packet: The incoming packet from a client
+        """
         pass
     
     _dispatch = {
