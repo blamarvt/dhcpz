@@ -15,6 +15,12 @@ class DhcpHandler(object):
         @param logger: Logger to use for all logging in this class
         """
         self.logger = logger or logging.getLogger(self.__class__.__name__)
+        self.dispatch = {
+            dhcp.DHCPDISCOVER : self.handle_discover,
+            dhcp.DHCPDECLINE : self.handle_decline,
+            dhcp.DHCPREQUEST : self.handle_request,
+            dhcp.DHCPRELEASE : self.handle_release,
+        }
 
     def handle_packet(self, listener, packet):
         """
@@ -22,7 +28,7 @@ class DhcpHandler(object):
         @param packet: The incoming packet
         """ 
         try:
-            return self._dispatch[packet["msgtype"]](self, listener, packet)
+            return self.dispatch[packet["msgtype"]](listener, packet)
         except KeyError:
             self.logger.debug("Unknown message type encountered: %d" % packet['msgtype'])
 
@@ -54,12 +60,5 @@ class DhcpHandler(object):
         """
         pass
     
-    _dispatch = {
-            dhcp.DHCPDISCOVER : handle_discover,
-            dhcp.DHCPDECLINE : handle_decline,
-            dhcp.DHCPREQUEST : handle_request,
-            dhcp.DHCPRELEASE : handle_release,
-            }
-
 
 

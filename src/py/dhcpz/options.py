@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
-import struct, socket
+import struct
+import socket
+
+from uuid import UUID
 
 from dpkt.dhcp import *
 
@@ -153,6 +156,20 @@ class BytesType(object):
 
     def __str__(self):
         return "octets"
+
+class UuidType(object):
+    def from_octets(self, value, isheader=False):
+        value = value[1:]
+        return UUID(bytes=value)
+
+    def to_octets(self, value, isheader=False):
+        return struct.pack("B", 0) + value.bytes
+
+    def to_log(self, value):
+        return repr(value)
+
+    def __str__(self):
+        return "uuid"
 
 class EnumType(IntType):
     def __init__(self, value_to_name, fmt="B"):
@@ -366,7 +383,7 @@ client_arch_map = {
 
 define_option(93, EnumType(client_arch_map, "H"), "client-architecture", "client-arch", "arch")
 define_option(94, StructType(EnumType({1:"undi"}), uint8, uint8), "network-interface-id", "nic-id")
-define_option(97, StructType(EnumType({0:"guid"}), octets), "client-machine-id")
+define_option(97, UuidType(), "client-machine-id")
 
 
 # RFC 3004

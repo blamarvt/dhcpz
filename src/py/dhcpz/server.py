@@ -33,14 +33,15 @@ class DhcpServerListener(gevent.Greenlet):
         self.sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_BROADCAST, 1)
         self.sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_BINDTODEVICE, self.iface_name)
         self.sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
-        self.sock.bind(('0.0.0.0', 67))
+        self.sock.bind(('', 67))
 
     def _run(self):
         while self._keepgoing:
             data, addr = self.sock.recvfrom(self.bufsize)
             packet = dhcpz.packet.DhcpPacket(data)
             response = self.handler.handle_packet(self, packet)
-            self.respond(response)
+            if response:
+                self.respond(response)
 
     def respond(self, packet):
         """
@@ -49,7 +50,8 @@ class DhcpServerListener(gevent.Greenlet):
 
         @param packet: The DHCP packet to send back to the client
         """
-        self.sock.sendto(packet.pack(), 0, ('255.255.255.255', 68))
+        del packet["params"]
+        self.sock.sendto(packet.pack(), ('255.255.255.255', 68))
 
     def stop(self):
         self._keepgoing = False
